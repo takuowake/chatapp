@@ -1,96 +1,101 @@
+import 'package:chatapp/firestore/room_firestore.dart';
 import 'package:chatapp/model/message.dart';
+import 'package:chatapp/model/talk_room.dart';
+import 'package:chatapp/utils/shared_prefs.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 
 class TalkRoomPage extends StatefulWidget {
-  final String name;
-  const TalkRoomPage(this.name, {Key? key}) : super(key: key);
+  final TalkRoom talkRoom;
+  const TalkRoomPage(this.talkRoom, {Key? key}) : super(key: key);
 
   @override
   State<TalkRoomPage> createState() => _TalkRoomPageState();
 }
 
 class _TalkRoomPageState extends State<TalkRoomPage> {
-  List<Message> messageList = [
-    Message(message: 'message1', isMe: true, sendtime: DateTime(2022, 1, 1, 12, 0)),
-    Message(message: 'message2', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message2af;jdksjk;sadfsdjf;asdkfa;fkjasd;jfa;sdkfj;dsajf;asdj;f', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message1', isMe: true, sendtime: DateTime(2022, 1, 1, 12, 0)),
-    Message(message: 'message2', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message2af;jdksjk;sadfsdjf;asdkfa;fkjasd;jfa;sdkfj;dsajf;asdj;f', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message1', isMe: true, sendtime: DateTime(2022, 1, 1, 12, 0)),
-    Message(message: 'message2', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message2af;jdksjk;sadfsdjf;asdkfa;fkjasd;jfa;sdkfj;dsajf;asdj;f', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message1', isMe: true, sendtime: DateTime(2022, 1, 1, 12, 0)),
-    Message(message: 'message2', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message2af;jdksjk;sadfsdjf;asdkfa;fkjasd;jfa;sdkfj;dsajf;asdj;f', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message1', isMe: true, sendtime: DateTime(2022, 1, 1, 12, 0)),
-    Message(message: 'message2', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message2af;jdksjk;sadfsdjf;asdkfa;fkjasd;jfa;sdkfj;dsajf;asdj;f', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message1', isMe: true, sendtime: DateTime(2022, 1, 1, 12, 0)),
-    Message(message: 'message2', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0)),
-    Message(message: 'message2af;jdksjk;sadfsdjf;asdkfa;fkjasd;jfa;sdkfj;dsajf;asdj;f', isMe: false, sendtime: DateTime(2022, 1, 1, 13, 0))
-  ];
+  final TextEditingController controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.lightBlueAccent,
       appBar: AppBar(
-        title: Text(widget.name)
+        title: Text(widget.talkRoom.talkUser.name)
       ),
       body: Stack(
-        alignment: Alignment.bottomCenter,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 60.0),
-            child: ListView.builder(
-              physics: const RangeMaintainingScrollPhysics(),
-              shrinkWrap: true,
-              reverse: true,
-              itemCount: messageList.length,
-              itemBuilder: (context, index){
+          StreamBuilder<QuerySnapshot>(
+            stream: RoomFirestore.fetchMessageSnapshot(widget.talkRoom.roomId),
+            builder: (context, snapshot) {
+              if(snapshot.hasData) {
                 return Padding(
-                  padding: EdgeInsets.only(top: 10, left: 10, right: 10, bottom: index == 0 ? 10 : 0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    textDirection: messageList[index].isMe ? TextDirection.rtl : TextDirection.ltr,
-                    children: [
-                      Container(
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-                        decoration: BoxDecoration(
-                          color: messageList[index].isMe ? Colors.green : Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        child: Text(messageList[index].message)),
-                      Text(intl.DateFormat('HH:mm').format(messageList[index].sendtime))
-                    ],
+                  padding: const EdgeInsets.only(bottom: 60.0),
+                  child: ListView.builder(
+                      physics: const RangeMaintainingScrollPhysics(),
+                      shrinkWrap: true,
+                      reverse: true,
+                      itemCount: snapshot.data!.docs.length,
+                      itemBuilder: (context, index){
+                        final doc = snapshot.data!.docs[index];
+                        final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                        final Message message = Message(
+                            message: data['message'],
+                            isMe: SharedPrefs.fetchUid() == data['sender_id'],
+                            sendTime: data['send_time']
+                        );
+                        return Padding(
+                          padding: EdgeInsets.only(top: 10, left: 10, right: 10, bottom: index == 0 ? 10 : 0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            textDirection: message.isMe ? TextDirection.rtl : TextDirection.ltr,
+                            children: [
+                              Container(
+                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                                  decoration: BoxDecoration(
+                                    color: message.isMe ? Colors.green : Colors.white,
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  child: Text(message.message)),
+                              Text(intl.DateFormat('HH:mm').format(message.sendTime.toDate()))
+                            ],
+                          ),
+                        );
+                      }
                   ),
                 );
+              } else {
+                return const Center(child: Text('メッセージがありません'));
               }
-            ),
+            }
           ),
           Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Container(
                 color: Colors.white,
                 height: 60,
                 child: Row(
                   children: [
-                    const Expanded(child: Padding(
-                      padding: EdgeInsets.all(8.0),
+                    Expanded(child: Padding(
+                      padding: const EdgeInsets.all(8.0),
                       child: TextField(
-                        decoration: InputDecoration(
+                        controller: controller,
+                        decoration: const InputDecoration(
                           contentPadding: EdgeInsets.only(left: 10),
                           border: OutlineInputBorder()
                         ),
                       ),
                     )),
                     IconButton(
-                        onPressed: () {
-
+                        onPressed: () async {
+                          await RoomFirestore.sendMessage(
+                              roomId: widget.talkRoom.roomId,
+                              message: controller.text
+                          );
+                          controller.clear();
                         },
                         icon: const Icon(Icons.send)
                     )
